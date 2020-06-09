@@ -28,14 +28,14 @@ class WrappingBeanSerializerBuilder extends BeanSerializer {
     
     boolean needsWrapping() {
         for (BeanPropertyWriter writer : _props) {
-            if (writer.getAnnotation(JsonWrapped.class) != null) {
+            if (writer != null && writer.getAnnotation(JsonWrapped.class) != null) {
                 return true;
             }
         }
         
         if (_filteredProps != null) {
             for (BeanPropertyWriter writer : _filteredProps) {
-                if (writer.getAnnotation(JsonWrapped.class) != null) {
+                if (writer != null && writer.getAnnotation(JsonWrapped.class) != null) {
                     return true;
                 }
             }
@@ -65,38 +65,42 @@ class WrappingBeanSerializerBuilder extends BeanSerializer {
         
         Map<String, PropPair> wrappedProps = new LinkedHashMap<String, PropPair>();
         
-        for (BeanPropertyWriter prop : propsIn) {                
-            JsonWrapped an = prop.getAnnotation(JsonWrapped.class);
-            if (validAnnotation(an)) {
-            	String property = getProperty(an);
-            	PropPair wrapped = wrappedProps.get(property);
-            	if (wrapped == null) {
-            		wrapped = new PropPair();
-            		wrappedProps.put(property, wrapped);
-            	}
-                wrapped.props.add(prop);
-            } else {
-                propsOut.add(prop);
+        for (BeanPropertyWriter prop : propsIn) {
+            if (prop != null) {
+                JsonWrapped an = prop.getAnnotation(JsonWrapped.class);
+                if (validAnnotation(an)) {
+                    String property = getProperty(an);
+                    PropPair wrapped = wrappedProps.get(property);
+                    if (wrapped == null) {
+                        wrapped = new PropPair();
+                        wrappedProps.put(property, wrapped);
+                    }
+                    wrapped.props.add(prop);
+                } else {
+                    propsOut.add(prop);
+                }
             }
         }
         
-        for (BeanPropertyWriter prop : fpropsIn) {                
-            JsonWrapped an = prop.getAnnotation(JsonWrapped.class);
-            if (validAnnotation(an)) {
-            	String property = getProperty(an);
-            	PropPair wrapped = wrappedProps.get(property);
-            	if (wrapped == null) {
-            		wrapped = new PropPair();
-            		wrappedProps.put(property, wrapped);
-            	}
-                wrapped.fprops.add(prop);
-            } else {
-                fpropsOut.add(prop);
+        for (BeanPropertyWriter prop : fpropsIn) {
+            if (prop != null) {
+                JsonWrapped an = prop.getAnnotation(JsonWrapped.class);
+                if (validAnnotation(an)) {
+                    String property = getProperty(an);
+                    PropPair wrapped = wrappedProps.get(property);
+                    if (wrapped == null) {
+                        wrapped = new PropPair();
+                        wrappedProps.put(property, wrapped);
+                    }
+                    wrapped.fprops.add(prop);
+                } else {
+                    fpropsOut.add(prop);
+                }
             }
         }
         
         for (Entry<String, PropPair> entry : wrappedProps.entrySet()) {
-        	propsOut.add(constructVirtualProperty(entry.getKey(), entry.getValue(), config, beanDesc));
+            propsOut.add(constructVirtualProperty(entry.getKey(), entry.getValue(), config, beanDesc));
         }
         
         PropPair remainingProps = new PropPair();
@@ -106,13 +110,13 @@ class WrappingBeanSerializerBuilder extends BeanSerializer {
     }
     
     private boolean validAnnotation(JsonWrapped an) {
-    	return (an != null && 
-    			an.value() != null && 
-    			!an.value().trim().isEmpty());
+        return (an != null && 
+                an.value() != null && 
+                !an.value().trim().isEmpty());
     }
     
     private String getProperty(JsonWrapped an) {
-    	return an.value().trim();
+        return an.value().trim();
     }
     
     private BeanPropertyWriter constructVirtualProperty(String name, PropPair wrappedProps, MapperConfig<?> config, BeanDescription beanDesc) {
