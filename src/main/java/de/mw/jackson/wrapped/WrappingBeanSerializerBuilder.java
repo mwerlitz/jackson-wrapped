@@ -46,10 +46,10 @@ class WrappingBeanSerializerBuilder extends BeanSerializer {
     
     BeanSerializer withWrappedProperties(MapperConfig<?> config, BeanDescription beanDesc) {
         PropPair remainingProps = wrapProperties(_props, (_filteredProps == null ? new BeanPropertyWriter[0] : _filteredProps), config, beanDesc);
-        return createBeanSerializer(remainingProps, config, beanDesc);
+        return createBeanSerializer(remainingProps, beanDesc);
     }
     
-    private BeanSerializer createBeanSerializer(PropPair props, MapperConfig<?> config, BeanDescription beanDesc) {
+    private BeanSerializer createBeanSerializer(PropPair props, BeanDescription beanDesc) {
         BeanSerializerBuilder builder = new BeanSerializerBuilder(beanDesc);
         builder.setTypeId(_typeId);
         builder.setAnyGetter(_anyGetterWriter);
@@ -128,7 +128,7 @@ class WrappingBeanSerializerBuilder extends BeanSerializer {
         AnnotatedMember member = new VirtualAnnotatedMember(ac, ac.getRawType(), propName.getSimpleName(), type);
         SimpleBeanPropertyDefinition propDef = SimpleBeanPropertyDefinition.construct(config, member, propName, metadata, Include.NON_EMPTY);
 
-        BeanSerializer wrappedPropsSerializer = createBeanSerializer(wrappedProps, config, beanDesc);
+        BeanSerializer wrappedPropsSerializer = createBeanSerializer(wrappedProps, beanDesc);
         return new WrappingPropertyWriter(propDef, ac.getAnnotations(), type, wrappedPropsSerializer);
     }
     
