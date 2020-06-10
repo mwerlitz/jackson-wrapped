@@ -12,13 +12,17 @@ import com.fasterxml.jackson.databind.introspect.VirtualAnnotatedMember;
 import com.fasterxml.jackson.databind.ser.BeanPropertyWriter;
 import com.fasterxml.jackson.databind.ser.BeanSerializer;
 import com.fasterxml.jackson.databind.ser.BeanSerializerBuilder;
+import com.fasterxml.jackson.databind.ser.impl.FilteredBeanPropertyWriter;
 import com.fasterxml.jackson.databind.util.SimpleBeanPropertyDefinition;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 class WrappingBeanSerializerBuilder extends BeanSerializer {
     
@@ -93,6 +97,7 @@ class WrappingBeanSerializerBuilder extends BeanSerializer {
                         wrappedProps.put(property, wrapped);
                     }
                     wrapped.fprops.add(prop);
+                    wrapped.views.addAll(Arrays.asList(prop.getViews()));
                 } else {
                     fpropsOut.add(prop);
                 }
@@ -100,7 +105,12 @@ class WrappingBeanSerializerBuilder extends BeanSerializer {
         }
         
         for (Entry<String, PropPair> entry : wrappedProps.entrySet()) {
-            propsOut.add(constructVirtualProperty(entry.getKey(), entry.getValue(), config, beanDesc));
+            if (!entry.getValue().props.isEmpty()) {
+                propsOut.add(constructVirtualProperty(entry.getKey(), entry.getValue(), config, beanDesc, false));
+            }
+            if (!entry.getValue().fprops.isEmpty()) {
+                fpropsOut.add(constructVirtualProperty(entry.getKey(), entry.getValue(), config, beanDesc, true));
+            }
         }
         
         PropPair remainingProps = new PropPair();
@@ -119,7 +129,7 @@ class WrappingBeanSerializerBuilder extends BeanSerializer {
         return an.value().trim();
     }
     
-    private BeanPropertyWriter constructVirtualProperty(String name, PropPair wrappedProps, MapperConfig<?> config, BeanDescription beanDesc) {
+    private BeanPropertyWriter constructVirtualProperty(String name, PropPair wrappedProps, MapperConfig<?> config, BeanDescription beanDesc, boolean filtered) {
         // code party from com.fasterxml.jackson.databind.introspect.JacksonAnnotationIntrospector._constructVirtualProperty(Prop, MapperConfig<?>, AnnotatedClass)
         AnnotatedClass ac = beanDesc.getClassInfo();
         PropertyMetadata metadata = PropertyMetadata.STD_OPTIONAL;
@@ -129,13 +139,21 @@ class WrappingBeanSerializerBuilder extends BeanSerializer {
         SimpleBeanPropertyDefinition propDef = SimpleBeanPropertyDefinition.construct(config, member, propName, metadata, Include.NON_EMPTY);
 
         BeanSerializer wrappedPropsSerializer = createBeanSerializer(wrappedProps, beanDesc);
-        return new WrappingPropertyWriter(propDef, ac.getAnnotations(), type, wrappedPropsSerializer);
+        
+        BeanPropertyWriter writer = new WrappingPropertyWriter(propDef, ac.getAnnotations(), type, wrappedPropsSerializer);
+        if (filtered && !wrappedProps.views.isEmpty()) {
+            writer = FilteredBeanPropertyWriter.constructViewBased(writer, wrappedProps.views.toArray(new Class<?>[wrappedProps.views.size()]));
+        }
+        
+        return writer;
     }
     
     private static class PropPair {
         
         private List<BeanPropertyWriter> props  = new ArrayList<BeanPropertyWriter>();
         private List<BeanPropertyWriter> fprops = new ArrayList<BeanPropertyWriter>();
+        
+        private Set<Class<?>> views = new HashSet<Class<?>>();
         
     }
 }
