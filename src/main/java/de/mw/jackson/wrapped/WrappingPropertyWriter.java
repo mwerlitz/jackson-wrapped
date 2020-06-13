@@ -12,7 +12,7 @@ import com.fasterxml.jackson.databind.util.Annotations;
 
 class WrappingPropertyWriter extends VirtualBeanPropertyWriter {
     
-    private BeanSerializer wrappedPropsSerializer;              
+    private BeanSerializer wrappedPropsSerializer;
             
     public WrappingPropertyWriter(BeanPropertyDefinition propDef, 
                                   Annotations contextAnnotations, 

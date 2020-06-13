@@ -7,7 +7,7 @@ import com.fasterxml.jackson.databind.ser.BeanSerializer;
 import com.fasterxml.jackson.databind.ser.BeanSerializerModifier;
 
 public class JsonWrappedBeanSerializerModifier extends BeanSerializerModifier {
-        
+    
     @Override
     public JsonSerializer<?> modifySerializer(SerializationConfig config, BeanDescription beanDesc, JsonSerializer<?> serializer) {
         if (serializer instanceof BeanSerializer) {
@@ -16,7 +16,7 @@ public class JsonWrappedBeanSerializerModifier extends BeanSerializerModifier {
                 return builder.withWrappedProperties(config, beanDesc);
             }
         }
- 
+        
         return serializer;
     }
 
