@@ -40,13 +40,13 @@ public class JsonWrappedTest {
             @JsonProperty
             int x = 42;
             @JsonWrapped("wrapped")
-            @JsonProperty
+            @JsonProperty("yy")
             int y = 4711;
         }
         
         String result = mapper.writeValueAsString(new FieldClass());
         
-        assertEquals("{\"x\":42,\"wrapped\":{\"y\":4711}}", result);
+        assertEquals("{\"x\":42,\"wrapped\":{\"yy\":4711}}", result);
     }
     
     @Test
@@ -108,6 +108,24 @@ public class JsonWrappedTest {
         String result = mapper.writeValueAsString(new PropertyClass());
         
         assertEquals("{\"x\":42,\"wrapped\":{\"y\":4711}}", result);
+    }
+    
+    @Test
+    public void jsonWrapped_warps_renamedproperty_atGetterLevel() throws JsonProcessingException {
+        class PropertyClass {
+            int x = 42;
+            int y = 4711;
+            
+            public int getX() {return x;}
+            
+            @JsonWrapped("wrapped")
+            @JsonProperty("yy")
+            public int getY() {return y;}
+        }
+        
+        String result = mapper.writeValueAsString(new PropertyClass());
+        
+        assertEquals("{\"x\":42,\"wrapped\":{\"yy\":4711}}", result);
     }
     
     @Test
@@ -325,24 +343,28 @@ public class JsonWrappedTest {
         assertEquals("{\"wrapped\":{\"y\":4711}}", result);
     }
     
+    
+    
     //
     // type level tests
     //
     
+    
+    
     @Test
     public void jsonWrapped_atTypeLevel_warps_propertyField() throws JsonProcessingException {
-        @JsonWrapped(value = "wrapped", properties = "y")
+        @JsonWrapped(value = "wrapped", properties = "yy")
         class FieldClass {
             @JsonProperty
             int x = 42;
             
-            @JsonProperty
+            @JsonProperty("yy")
             int y = 4711;
         }
         
         String result = mapper.writeValueAsString(new FieldClass());
         
-        assertEquals("{\"x\":42,\"wrapped\":{\"y\":4711}}", result);
+        assertEquals("{\"x\":42,\"wrapped\":{\"yy\":4711}}", result);
     }
     
     @Test
@@ -387,6 +409,24 @@ public class JsonWrappedTest {
         String result = mapper.writeValueAsString(new PropertyClass());
         
         assertEquals("{\"x\":42,\"wrapped\":{\"y\":4711}}", result);
+    }
+    
+    @Test
+    public void jsonWrapped_atTypeLevel_warps_renamedproperty_atGetterLevel() throws JsonProcessingException {
+        @JsonWrapped(value = "wrapped", properties = "yy")
+        class PropertyClass {
+            int x = 42;
+            int y = 4711;
+            
+            public int getX() {return x;}
+            
+            @JsonProperty("yy")
+            public int getY() {return y;}
+        }
+        
+        String result = mapper.writeValueAsString(new PropertyClass());
+        
+        assertEquals("{\"x\":42,\"wrapped\":{\"yy\":4711}}", result);
     }
     
     @Test
