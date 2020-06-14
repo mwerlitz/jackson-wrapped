@@ -1,6 +1,15 @@
 package de.mw.jackson.wrapped;
 
 
+import static org.junit.Assert.assertEquals;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+import org.junit.Before;
+import org.junit.Test;
+
+import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonFilter;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonView;
@@ -8,11 +17,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ser.impl.SimpleBeanPropertyFilter;
 import com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider;
-
-import static org.junit.Assert.assertEquals;
-
-import org.junit.Before;
-import org.junit.Test;
 
 
 @SuppressWarnings("unused")
@@ -299,6 +303,26 @@ public class JsonWrappedTest {
         String result = mapper.writeValueAsString(new FieldClass());
         
         assertEquals("{\"nested\":{\"x\":42,\"wrapped\":{\"y\":4711}}}", result);
+    }
+    
+    public void jsonWrapped_wraps_propertiesOfanygetter() throws JsonProcessingException {
+        class FieldClass {
+            public int x = 42;
+            
+            private Map<String, Object> anygetter = new LinkedHashMap<String, Object>();
+            
+            @JsonAnyGetter
+            @JsonWrapped("wrapped")
+            public Map<String, Object> getAny() {
+                return anygetter;
+            }
+        }
+        FieldClass value = new FieldClass();
+        value.anygetter.put("y", 4711);
+        
+        String result = mapper.writeValueAsString(value);
+        
+        assertEquals("{\"wrapped\":{\"y\":4711}}", result);
     }
     
     //
