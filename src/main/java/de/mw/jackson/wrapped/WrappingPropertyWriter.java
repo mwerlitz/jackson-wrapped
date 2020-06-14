@@ -10,6 +10,9 @@ import com.fasterxml.jackson.databind.ser.BeanSerializer;
 import com.fasterxml.jackson.databind.ser.VirtualBeanPropertyWriter;
 import com.fasterxml.jackson.databind.util.Annotations;
 
+/**
+ * VirtualBeanPropertyWriter that acts as a adapter for a "virtual" {@link BeanSerializer}.
+ */
 class WrappingPropertyWriter extends VirtualBeanPropertyWriter {
     
     private BeanSerializer wrappedPropsSerializer;

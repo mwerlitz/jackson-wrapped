@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.PropertyMetadata;
 import com.fasterxml.jackson.databind.PropertyName;
 import com.fasterxml.jackson.databind.cfg.MapperConfig;
+import com.fasterxml.jackson.databind.introspect.Annotated;
 import com.fasterxml.jackson.databind.introspect.AnnotatedClass;
 import com.fasterxml.jackson.databind.introspect.AnnotatedMember;
 import com.fasterxml.jackson.databind.introspect.VirtualAnnotatedMember;
@@ -24,19 +25,40 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+/**
+ * Helper class for creating wrapping virtual properties.
+ * 
+ * This works by analyzing the properties ({@link BeanPropertyWriter}) of the existing {@link BeanSerializer}.
+ * If a property that should be wrapped is detected it will be grouped with others into a virtual property {@link WrappingPropertyWriter}
+ * which is in fact a wrapper for a new {@link BeanSerializer} of a "virtual bean" (matching the original type). 
+ * The existing properties ({@link BeanPropertyWriter}) will be moved to the "virtual bean".
+ *
+ * As a result a copy of the original {@link BeanSerializer} will created containing only the non-wrapped properties
+ * and the virtual properties (BeanSerializer is immutable). 
+ * 
+ * Unfortunately it is not possible to access all data about the original {@link BeanSerializer} from outside.
+ * Thus this class is a subclass of it. Do not use the builder instance for serialization.
+ */
 class WrappingBeanSerializerBuilder extends BeanSerializer {
     
     WrappingBeanSerializerBuilder(BeanSerializer src) {
         super(src);
     }   
     
-    boolean needsWrapping() {
+    boolean needsWrapping(BeanDescription beanDesc) {
+        // type level
+        if (beanDesc.getClassInfo() != null && beanDesc.getClassInfo().getAnnotation(JsonWrapped.class) != null) {
+            return true;
+        }
+        
+        // property level - non filtered
         for (BeanPropertyWriter writer : _props) {
             if (writer != null && writer.getAnnotation(JsonWrapped.class) != null) {
                 return true;
             }
         }
         
+        // property level - filtered
         if (_filteredProps != null) {
             for (BeanPropertyWriter writer : _filteredProps) {
                 if (writer != null && writer.getAnnotation(JsonWrapped.class) != null) {
@@ -63,47 +85,25 @@ class WrappingBeanSerializerBuilder extends BeanSerializer {
         return new BeanSerializer(_beanType, builder, props.props.toArray(new BeanPropertyWriter[props.props.size()]), props.fprops.toArray(new BeanPropertyWriter[props.fprops.size()]));
     }
     
+    private BeanSerializer createWrappingBeanSerializer(PropPair props, BeanDescription beanDesc) {
+        BeanSerializerBuilder builder = new BeanSerializerBuilder(beanDesc);
+        builder.setFilterId(_propertyFilterId);
+        
+        return new BeanSerializer(_beanType, builder, props.props.toArray(new BeanPropertyWriter[props.props.size()]), props.fprops.toArray(new BeanPropertyWriter[props.fprops.size()]));
+    }
+    
     private PropPair wrapProperties(BeanPropertyWriter[] propsIn, BeanPropertyWriter[] fpropsIn, MapperConfig<?> config, BeanDescription beanDesc) {
-        List<BeanPropertyWriter> propsOut  = new ArrayList<BeanPropertyWriter>(propsIn.length);
+        List<BeanPropertyWriter>  propsOut = new ArrayList<BeanPropertyWriter>( propsIn.length);
         List<BeanPropertyWriter> fpropsOut = new ArrayList<BeanPropertyWriter>(fpropsIn.length);
+        Map<String, PropPair> wrappedProps = new LinkedHashMap<String, PropPair>(); // key = virtual property, value = grouped wrapped properties
         
-        Map<String, PropPair> wrappedProps = new LinkedHashMap<String, PropPair>();
+        // filter properties (BeanPropertyWriter) that should be wrapped
+        // non-wrapped go into propsOut/fpropsOut
+        // wrapped go into wrappedProps map
+        filterAndGroupWrappedProperties( propsIn,  propsOut, wrappedProps, beanDesc, false); // non filtered
+        filterAndGroupWrappedProperties(fpropsIn, fpropsOut, wrappedProps, beanDesc, true);  // filtered
         
-        for (BeanPropertyWriter prop : propsIn) {
-            if (prop != null) {
-                JsonWrapped an = prop.getAnnotation(JsonWrapped.class);
-                if (validAnnotation(an)) {
-                    String property = getProperty(an);
-                    PropPair wrapped = wrappedProps.get(property);
-                    if (wrapped == null) {
-                        wrapped = new PropPair();
-                        wrappedProps.put(property, wrapped);
-                    }
-                    wrapped.props.add(prop);
-                } else {
-                    propsOut.add(prop);
-                }
-            }
-        }
-        
-        for (BeanPropertyWriter prop : fpropsIn) {
-            if (prop != null) {
-                JsonWrapped an = prop.getAnnotation(JsonWrapped.class);
-                if (validAnnotation(an)) {
-                    String property = getProperty(an);
-                    PropPair wrapped = wrappedProps.get(property);
-                    if (wrapped == null) {
-                        wrapped = new PropPair();
-                        wrappedProps.put(property, wrapped);
-                    }
-                    wrapped.fprops.add(prop);
-                    wrapped.views.addAll(Arrays.asList(prop.getViews()));
-                } else {
-                    fpropsOut.add(prop);
-                }
-            }
-        }
-        
+        // create wrapping virtual properties for each group and add them to the remaining non-props of the bean
         for (Entry<String, PropPair> entry : wrappedProps.entrySet()) {
             if (!entry.getValue().props.isEmpty()) {
                 propsOut.add(constructVirtualProperty(entry.getKey(), entry.getValue(), config, beanDesc, false));
@@ -119,14 +119,51 @@ class WrappingBeanSerializerBuilder extends BeanSerializer {
         return remainingProps;
     }
     
-    private boolean validAnnotation(JsonWrapped an) {
-        return (an != null && 
-                an.value() != null && 
-                !an.value().trim().isEmpty());
+    private void filterAndGroupWrappedProperties(BeanPropertyWriter[] propsIn, List<BeanPropertyWriter> propsOut, Map<String, PropPair> wrappedProps, BeanDescription beanDesc, boolean filtered) {
+        for (BeanPropertyWriter prop : propsIn) {
+            if (prop != null) {
+                String virtualProperty = getVirtualProperty(prop, beanDesc.getClassInfo());
+                if (virtualProperty != null) {
+                    PropPair wrapped = wrappedProps.get(virtualProperty);
+                    if (wrapped == null) {
+                        wrapped = new PropPair();
+                        wrappedProps.put(virtualProperty, wrapped);
+                    }
+                    if (filtered) {
+                        wrapped.fprops.add(prop);
+                        wrapped.views.addAll(Arrays.asList(prop.getViews()));
+                    } else {
+                        wrapped.props.add(prop);
+                    }
+                } else {
+                    propsOut.add(prop);
+                }
+            }
+        }
     }
     
-    private String getProperty(JsonWrapped an) {
-        return an.value().trim();
+    private String getVirtualProperty(BeanPropertyWriter prop, AnnotatedClass type) {
+        String virtualProperty = getVirtualPropertyFromProperty(prop.getMember());
+        if (virtualProperty == null) {
+            virtualProperty = getVirtualPropertyFromType(type, prop);
+        }
+        return virtualProperty;
+    }
+    
+    private String getVirtualPropertyFromProperty(Annotated annotated) {
+        JsonWrapped annotation = annotated.getAnnotation(JsonWrapped.class);
+        if (annotation != null && annotation.value() != null && !annotation.value().trim().isEmpty()) {
+            return annotation.value().trim();
+        }
+        return null;
+    }
+    
+    private String getVirtualPropertyFromType(Annotated annotated, BeanPropertyWriter prop) {
+        String virtualProperty = getVirtualPropertyFromProperty(annotated);
+        if (virtualProperty != null && Arrays.asList(annotated.getAnnotation(JsonWrapped.class).properties()).contains(prop.getName())) {
+            return virtualProperty;
+        }
+        return null;
     }
     
     private BeanPropertyWriter constructVirtualProperty(String name, PropPair wrappedProps, MapperConfig<?> config, BeanDescription beanDesc, boolean filtered) {
@@ -138,10 +175,10 @@ class WrappingBeanSerializerBuilder extends BeanSerializer {
         AnnotatedMember member = new VirtualAnnotatedMember(ac, ac.getRawType(), propName.getSimpleName(), type);
         SimpleBeanPropertyDefinition propDef = SimpleBeanPropertyDefinition.construct(config, member, propName, metadata, Include.NON_EMPTY);
 
-        BeanSerializer wrappedPropsSerializer = createBeanSerializer(wrappedProps, beanDesc);
+        BeanSerializer wrappedPropsSerializer = createWrappingBeanSerializer(wrappedProps, beanDesc);
         
         BeanPropertyWriter writer = new WrappingPropertyWriter(propDef, ac.getAnnotations(), type, wrappedPropsSerializer);
-        if (filtered && !wrappedProps.views.isEmpty()) {
+        if (filtered && !wrappedProps.views.isEmpty()) { // filter property by view, if required
             writer = FilteredBeanPropertyWriter.constructViewBased(writer, wrappedProps.views.toArray(new Class<?>[wrappedProps.views.size()]));
         }
         
@@ -150,7 +187,7 @@ class WrappingBeanSerializerBuilder extends BeanSerializer {
     
     private static class PropPair {
         
-        private List<BeanPropertyWriter> props  = new ArrayList<BeanPropertyWriter>();
+        private List<BeanPropertyWriter>  props = new ArrayList<BeanPropertyWriter>();
         private List<BeanPropertyWriter> fprops = new ArrayList<BeanPropertyWriter>();
         
         private Set<Class<?>> views = new HashSet<Class<?>>();
