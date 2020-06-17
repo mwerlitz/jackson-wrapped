@@ -12,6 +12,8 @@ import org.junit.Test;
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonFilter;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.fasterxml.jackson.annotation.JsonView;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -341,6 +343,21 @@ public class JsonWrappedTest {
         String result = mapper.writeValueAsString(value);
         
         assertEquals("{\"wrapped\":{\"y\":4711}}", result);
+    }
+    
+    @Test
+    public void jsonWrapped_ignores_typeOnVirtualProperty() throws JsonProcessingException {
+        @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
+        @JsonTypeName("foo")
+        class FieldClass {
+            public int x = 42;
+            @JsonWrapped("wrapped")
+            public int y = 4711;
+        }
+        
+        String result = mapper.writeValueAsString(new FieldClass());
+        
+        assertEquals("{\"type\":\"foo\",\"x\":42,\"wrapped\":{\"y\":4711}}", result);
     }
     
     
