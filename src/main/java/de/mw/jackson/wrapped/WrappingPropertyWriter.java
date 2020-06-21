@@ -16,6 +16,7 @@ import com.fasterxml.jackson.databind.util.Annotations;
 class WrappingPropertyWriter extends VirtualBeanPropertyWriter {
     
     private BeanSerializer wrappedPropsSerializer;
+    private boolean wrappedPropsSerializerResolved;
             
     public WrappingPropertyWriter(BeanPropertyDefinition propDef, 
                                   Annotations contextAnnotations, 
@@ -34,6 +35,10 @@ class WrappingPropertyWriter extends VirtualBeanPropertyWriter {
 
     @Override
     public void serializeAsElement(Object value, JsonGenerator jgen, SerializerProvider provider) throws Exception {
+        if (!wrappedPropsSerializerResolved) { // workaround for wrapped BeanSerializer is not resolved as it is hidden here inside
+            wrappedPropsSerializer.resolve(provider);
+            wrappedPropsSerializerResolved = true;
+        }
         wrappedPropsSerializer.serialize(value, jgen, provider);
     }
 

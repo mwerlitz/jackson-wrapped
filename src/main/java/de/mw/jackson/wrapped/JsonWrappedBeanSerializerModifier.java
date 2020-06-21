@@ -10,7 +10,7 @@ import com.fasterxml.jackson.databind.ser.BeanSerializerModifier;
  * BeanSerializerModifier that detects the {@link JsonWrapped} annotation 
  * and modifies the original {@link BeanSerializer} accordingly.
  */
-public class JsonWrappedBeanSerializerModifier extends BeanSerializerModifier {
+class JsonWrappedBeanSerializerModifier extends BeanSerializerModifier {
     
     @Override
     public JsonSerializer<?> modifySerializer(SerializationConfig config, BeanDescription beanDesc, JsonSerializer<?> serializer) {
@@ -23,5 +23,7 @@ public class JsonWrappedBeanSerializerModifier extends BeanSerializerModifier {
         
         return serializer;
     }
+    
+    
 
 }

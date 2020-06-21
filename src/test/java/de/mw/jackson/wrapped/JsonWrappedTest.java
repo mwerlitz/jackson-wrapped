@@ -37,7 +37,7 @@ public class JsonWrappedTest {
     }
     
     @Test
-    public void jsonWrapped_warps_propertyField() throws JsonProcessingException {
+    void jsonWrapped_warps_propertyField() throws JsonProcessingException {
         class FieldClass {
             @JsonProperty
             int x = 42;
@@ -52,7 +52,7 @@ public class JsonWrappedTest {
     }
     
     @Test
-    public void jsonWrapped_ignores_unserializedPropertyField() throws JsonProcessingException {
+    void jsonWrapped_ignores_unserializedPropertyField() throws JsonProcessingException {
         class FieldClass {
             @JsonProperty
             int x = 42;
@@ -66,7 +66,7 @@ public class JsonWrappedTest {
     }
     
     @Test
-    public void jsonWrapped_warps_publicPropertyField() throws JsonProcessingException {
+    void jsonWrapped_warps_publicPropertyField() throws JsonProcessingException {
         class FieldClass {
             @JsonProperty
             int x = 42;
@@ -80,7 +80,7 @@ public class JsonWrappedTest {
     }
     
     @Test
-    public void jsonWrapped_warps_property_atFieldLevel() throws JsonProcessingException {
+    void jsonWrapped_warps_property_atFieldLevel() throws JsonProcessingException {
         class PropertyClass {
             int x = 42;
             @JsonWrapped("wrapped")
@@ -96,7 +96,7 @@ public class JsonWrappedTest {
     }
     
     @Test
-    public void jsonWrapped_warps_property_atGetterLevel() throws JsonProcessingException {
+    void jsonWrapped_warps_property_atGetterLevel() throws JsonProcessingException {
         class PropertyClass {
             int x = 42;
             int y = 4711;
@@ -113,7 +113,7 @@ public class JsonWrappedTest {
     }
     
     @Test
-    public void jsonWrapped_warps_renamedproperty_atGetterLevel() throws JsonProcessingException {
+    void jsonWrapped_warps_renamedproperty_atGetterLevel() throws JsonProcessingException {
         class PropertyClass {
             int x = 42;
             int y = 4711;
@@ -131,7 +131,7 @@ public class JsonWrappedTest {
     }
     
     @Test
-    public void jsonWrapped_warps_combined_multipleProperties() throws JsonProcessingException {
+    void jsonWrapped_warps_combined_multipleProperties() throws JsonProcessingException {
         class FieldClass {
             public int x = 42;
             @JsonWrapped("wrapped")
@@ -146,7 +146,7 @@ public class JsonWrappedTest {
     }
     
     @Test
-    public void jsonWrapped_warps_grouped_multipleProperties() throws JsonProcessingException {
+    void jsonWrapped_warps_grouped_multipleProperties() throws JsonProcessingException {
         class FieldClass {
             public int x = 42;
             @JsonWrapped("wrapped")
@@ -165,7 +165,7 @@ public class JsonWrappedTest {
     }
     
     @Test
-    public void jsonWrapped_ignores_propertiesNotIncludedInView() throws JsonProcessingException {
+    void jsonWrapped_ignores_propertiesNotIncludedInView() throws JsonProcessingException {
         @JsonView(DefaultView.class)
         class FieldClass {
             public int x = 42;
@@ -182,7 +182,7 @@ public class JsonWrappedTest {
     }
     
     @Test
-    public void jsonWrapped_wraps_propertiesIncludedInView() throws JsonProcessingException {
+    void jsonWrapped_wraps_propertiesIncludedInView() throws JsonProcessingException {
         @JsonView(DefaultView.class)
         class FieldClass {
             public int x = 42;
@@ -199,7 +199,7 @@ public class JsonWrappedTest {
     }
     
     @Test
-    public void jsonWrapped_wraps_propertiesIncludedInMultipleViews() throws JsonProcessingException {
+    void jsonWrapped_wraps_propertiesIncludedInMultipleViews() throws JsonProcessingException {
         @JsonView(DefaultView.class)
         class FieldClass {
             public int x = 42;
@@ -220,7 +220,7 @@ public class JsonWrappedTest {
     }
     
     @Test
-    public void jsonWrapped_ommits_propertiesNotIncludedInView() throws JsonProcessingException {
+    void jsonWrapped_ommits_propertiesNotIncludedInView() throws JsonProcessingException {
         @JsonView(DefaultView.class)
         class FieldClass {
             public int x = 42;
@@ -241,7 +241,157 @@ public class JsonWrappedTest {
     }
     
     @Test
-    public void jsonWrapped_virtualProperty_isConsideredByFilter() throws JsonProcessingException {
+    void jsonWrapped_virtualProperty_isOmmitedWhenNotInView() throws JsonProcessingException {
+        @JsonView(DefaultView.class)
+        class FieldClass {
+            public int x = 42;
+            
+            @JsonWrapped(value = "wrapped", views = View.class)
+            public int y = 4711;
+        }
+        
+        String result = mapper.writerWithView(DefaultView.class)
+                              .writeValueAsString(new FieldClass());
+        
+        assertEquals("{\"x\":42}", result);
+    }
+    
+    @Test
+    void jsonWrapped_virtualProperty_isOmmitedWhenNotInView_evenIfPropertyIsInView() throws JsonProcessingException {
+        @JsonView(DefaultView.class)
+        class FieldClass {
+            public int x = 42;
+            
+            @JsonWrapped(value = "wrapped", views = View.class)
+            @JsonView(DefaultView.class)
+            public int y = 4711;
+        }
+        
+        String result = mapper.writerWithView(DefaultView.class)
+                              .writeValueAsString(new FieldClass());
+        
+        assertEquals("{\"x\":42}", result);
+    }
+    
+    @Test
+    void jsonWrapped_virtualProperty_isNotOmmitedWhenInView() throws JsonProcessingException {
+        @JsonView(DefaultView.class)
+        class FieldClass {
+            public int x = 42;
+            
+            @JsonWrapped(value = "wrapped", views = View.class)
+            public int y = 4711;
+        }
+        
+        String result = mapper.writerWithView(View.class)
+                              .writeValueAsString(new FieldClass());
+        
+        assertEquals("{\"x\":42,\"wrapped\":{\"y\":4711}}", result);
+    }
+    
+    @Test
+    void jsonWrapped_virtualProperty_isNotOmmitedWhenInView_multiple() throws JsonProcessingException {
+        @JsonView(DefaultView.class)
+        class FieldClass {
+            public int x = 42;
+            
+            @JsonWrapped(value = "wrapped", views = {View.class, DefaultView.class})
+            public int y = 4711;
+        }
+        
+        {
+            String result = mapper.writerWithView(View.class)
+                                  .writeValueAsString(new FieldClass());
+            
+            assertEquals("{\"x\":42,\"wrapped\":{\"y\":4711}}", result);
+        }
+        {
+            String result = mapper.writerWithView(DefaultView.class)
+                                  .writeValueAsString(new FieldClass());
+            
+            assertEquals("{\"x\":42,\"wrapped\":{\"y\":4711}}", result);
+        }
+    }
+    
+    @Test
+    void jsonWrapped_virtualProperty_isNotOmmitedWhenInView_viewOfDifferentAnnotationsWithSamePropertyNameAreCombined() throws JsonProcessingException {
+        @JsonView(DefaultView.class)
+        class FieldClass {
+            public int x = 42;
+            
+            @JsonWrapped(value = "wrapped", views = View.class)
+            public int y = 4711;
+            
+            @JsonWrapped(value = "wrapped", views = View2.class)
+            public int z = 10;
+            
+            @JsonWrapped("wrapped")
+            public int a = 1;
+        }
+        
+        {
+            String result = mapper.writerWithView(View2.class)
+                                  .writeValueAsString(new FieldClass());
+            
+            assertEquals("{\"x\":42,\"wrapped\":{\"y\":4711,\"z\":10,\"a\":1}}", result);
+        }
+        {
+            String result = mapper.writerWithView(View.class)
+                                  .writeValueAsString(new FieldClass());
+            
+            assertEquals("{\"x\":42,\"wrapped\":{\"y\":4711,\"z\":10,\"a\":1}}", result);
+        }
+    }
+    
+    @Test
+    void jsonWrapped_virtualProperty_isNotOmmitedWhenInView_viewOfDifferentAnnotationsWithDifferentPropertyNamesAreNotCombined() throws JsonProcessingException {
+        @JsonView(DefaultView.class)
+        class FieldClass {
+            public int x = 42;
+            
+            @JsonWrapped(value = "wrapped", views = View.class)
+            public int y = 4711;
+            
+            @JsonWrapped(value = "foo", views = View2.class)
+            public int z = 4711;
+        }
+        
+        {
+            String result = mapper.writerWithView(View2.class)
+                                  .writeValueAsString(new FieldClass());
+            
+            assertEquals("{\"x\":42,\"foo\":{\"z\":4711}}", result);
+        }
+        {
+            String result = mapper.writerWithView(View.class)
+                                  .writeValueAsString(new FieldClass());
+            
+            assertEquals("{\"x\":42,\"wrapped\":{\"y\":4711}}", result);
+        }
+    }
+    
+    @Test
+    void jsonWrapped_virtualProperty_views_doNotInfluenceViewsOfProperties() throws JsonProcessingException {
+        @JsonView(DefaultView.class)
+        class FieldClass {
+            public int x = 42;
+            
+            @JsonWrapped(value = "wrapped", views = DefaultView.class)
+            public int y = 4711;
+            
+            @JsonWrapped(value = "wrapped", views = DefaultView.class)
+            @JsonView(View.class)
+            public int z = 4711;
+        }
+        
+        String result = mapper.writerWithView(DefaultView.class)
+                              .writeValueAsString(new FieldClass());
+        
+        assertEquals("{\"x\":42,\"wrapped\":{\"y\":4711}}", result);
+    }
+    
+    @Test
+    void jsonWrapped_virtualProperty_isConsideredByFilter() throws JsonProcessingException {
         @JsonFilter("filter")
         class FieldClass {
             public int x = 42;
@@ -257,7 +407,7 @@ public class JsonWrappedTest {
     }
     
     @Test
-    public void jsonWrapped_warps_propertiesIncludedByClassFilter() throws JsonProcessingException {
+    void jsonWrapped_warps_propertiesIncludedByClassFilter() throws JsonProcessingException {
         @JsonFilter("filter")
         class FieldClass {
             public int x = 42;
@@ -273,7 +423,7 @@ public class JsonWrappedTest {
     }
     
     @Test
-    public void jsonWrapped_ommits_propertiesExcludedByClassFilter() throws JsonProcessingException {
+    void jsonWrapped_ommits_propertiesExcludedByClassFilter() throws JsonProcessingException {
         @JsonFilter("filter")
         class FieldClass {
             public int x = 42;
@@ -292,7 +442,7 @@ public class JsonWrappedTest {
     }
     
     @Test
-    public void jsonWrapped_wraps_nestedBean() throws JsonProcessingException {
+    void jsonWrapped_wraps_nestedBean() throws JsonProcessingException {
         class NestedFieldClass {
             public int y = 4711;
         };
@@ -309,7 +459,7 @@ public class JsonWrappedTest {
     }
     
     @Test
-    public void jsonWrapped_wraps_propertiesOfNestedBean() throws JsonProcessingException {
+    void jsonWrapped_wraps_propertiesOfNestedBean() throws JsonProcessingException {
         class NestedFieldClass {
             public int x = 42;
             
@@ -325,7 +475,8 @@ public class JsonWrappedTest {
         assertEquals("{\"nested\":{\"x\":42,\"wrapped\":{\"y\":4711}}}", result);
     }
     
-    public void jsonWrapped_wraps_propertiesOfanygetter() throws JsonProcessingException {
+    @Test
+    void jsonWrapped_wraps_propertiesOfAnyGetter() throws JsonProcessingException {
         class FieldClass {
             public int x = 42;
             
@@ -342,11 +493,11 @@ public class JsonWrappedTest {
         
         String result = mapper.writeValueAsString(value);
         
-        assertEquals("{\"wrapped\":{\"y\":4711}}", result);
+        assertEquals("{\"x\":42,\"wrapped\":{\"y\":4711}}", result);
     }
     
     @Test
-    public void jsonWrapped_ignores_typeOnVirtualProperty() throws JsonProcessingException {
+    void jsonWrapped_ignores_typeOnVirtualProperty() throws JsonProcessingException {
         @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
         @JsonTypeName("foo")
         class FieldClass {
@@ -369,7 +520,7 @@ public class JsonWrappedTest {
     
     
     @Test
-    public void jsonWrapped_atTypeLevel_warps_propertyField() throws JsonProcessingException {
+    void jsonWrapped_atTypeLevel_warps_propertyField() throws JsonProcessingException {
         @JsonWrapped(value = "wrapped", properties = "yy")
         class FieldClass {
             @JsonProperty
@@ -385,7 +536,7 @@ public class JsonWrappedTest {
     }
     
     @Test
-    public void jsonWrapped_atTypeLevel_ignores_unserializedPropertyField() throws JsonProcessingException {
+    void jsonWrapped_atTypeLevel_ignores_unserializedPropertyField() throws JsonProcessingException {
         @JsonWrapped(value = "wrapped", properties = "y")
         class FieldClass {
             @JsonProperty
@@ -399,7 +550,7 @@ public class JsonWrappedTest {
     }
     
     @Test
-    public void jsonWrapped_atTypeLevel_warps_publicPropertyField() throws JsonProcessingException {
+    void jsonWrapped_atTypeLevel_warps_publicPropertyField() throws JsonProcessingException {
         @JsonWrapped(value = "wrapped", properties = "y")
         class FieldClass {
             @JsonProperty
@@ -413,7 +564,7 @@ public class JsonWrappedTest {
     }
     
     @Test
-    public void jsonWrapped_atTypeLevel_warps_property() throws JsonProcessingException {
+    void jsonWrapped_atTypeLevel_warps_property() throws JsonProcessingException {
         @JsonWrapped(value = "wrapped", properties = "y")
         class PropertyClass {
             int x = 42;
@@ -429,7 +580,7 @@ public class JsonWrappedTest {
     }
     
     @Test
-    public void jsonWrapped_atTypeLevel_warps_renamedproperty_atGetterLevel() throws JsonProcessingException {
+    void jsonWrapped_atTypeLevel_warps_renamedproperty_atGetterLevel() throws JsonProcessingException {
         @JsonWrapped(value = "wrapped", properties = "yy")
         class PropertyClass {
             int x = 42;
@@ -447,7 +598,7 @@ public class JsonWrappedTest {
     }
     
     @Test
-    public void jsonWrapped_atTypeLevel_warps_combined_multipleProperties() throws JsonProcessingException {
+    void jsonWrapped_atTypeLevel_warps_combined_multipleProperties() throws JsonProcessingException {
         @JsonWrapped(value = "wrapped", properties = {"y", "z"})
         class FieldClass {
             public int x = 42;
@@ -461,7 +612,7 @@ public class JsonWrappedTest {
     }
     
     @Test
-    public void jsonWrapped_atTypeLevel_warps_mixed_multipleProperties() throws JsonProcessingException {
+    void jsonWrapped_atTypeLevel_warps_mixed_multipleProperties() throws JsonProcessingException {
         @JsonWrapped(value = "wrapped", properties = {"y", "z"})
         class FieldClass {
             public int x = 42;
@@ -479,7 +630,7 @@ public class JsonWrappedTest {
     }
     
     @Test
-    public void jsonWrapped_atTypeLevel_andPropertyLevel_warps_and_combines_multipleProperties() throws JsonProcessingException {
+    void jsonWrapped_atTypeLevel_andPropertyLevel_warps_and_combines_multipleProperties() throws JsonProcessingException {
         @JsonWrapped(value = "wrapped", properties = {"y", "z"})
         class FieldClass {
             public int x = 42;
@@ -495,7 +646,7 @@ public class JsonWrappedTest {
     }
     
     @Test
-    public void jsonWrapped_atTypeLevel_hasLowerPriorityThan_atPropertyLevel() throws JsonProcessingException {
+    void jsonWrapped_atTypeLevel_hasLowerPriorityThan_atPropertyLevel() throws JsonProcessingException {
         @JsonWrapped(value = "wrapped", properties = {"y", "z"})
         class FieldClass {
             public int x = 42;
@@ -510,7 +661,7 @@ public class JsonWrappedTest {
     }
     
     @Test
-    public void jsonWrapped_atTypeLevel_ignores_propertiesNotIncludedInView() throws JsonProcessingException {
+    void jsonWrapped_atTypeLevel_ignores_propertiesNotIncludedInView() throws JsonProcessingException {
         @JsonView(DefaultView.class)
         @JsonWrapped(value = "wrapped", properties = "y")
         class FieldClass {
@@ -527,7 +678,7 @@ public class JsonWrappedTest {
     }
     
     @Test
-    public void jsonWrapped_atTypeLevel_wraps_propertiesIncludedInView() throws JsonProcessingException {
+    void jsonWrapped_atTypeLevel_wraps_propertiesIncludedInView() throws JsonProcessingException {
         @JsonView(DefaultView.class)
         @JsonWrapped(value = "wrapped", properties = "y")
         class FieldClass {
@@ -544,7 +695,7 @@ public class JsonWrappedTest {
     }
     
     @Test
-    public void jsonWrapped_atTypeLevel_wraps_propertiesIncludedInMultipleViews() throws JsonProcessingException {
+    void jsonWrapped_atTypeLevel_wraps_propertiesIncludedInMultipleViews() throws JsonProcessingException {
         @JsonView(DefaultView.class)
         @JsonWrapped(value = "wrapped", properties = {"y", "z"})
         class FieldClass {
@@ -564,7 +715,7 @@ public class JsonWrappedTest {
     }
     
     @Test
-    public void jsonWrapped_atTypeLevel_ommits_propertiesNotIncludedInView() throws JsonProcessingException {
+    void jsonWrapped_atTypeLevel_ommits_propertiesNotIncludedInView() throws JsonProcessingException {
         @JsonView(DefaultView.class)
         @JsonWrapped(value = "wrapped", properties = {"y", "z"})
         class FieldClass {
@@ -584,7 +735,188 @@ public class JsonWrappedTest {
     }
     
     @Test
-    public void jsonWrapped_atTypeLevel_virtualProperty_isConsideredByFilter() throws JsonProcessingException {
+    void jsonWrapped_atTypeLevel_virtualProperty_isOmmitedWhenNotInView() throws JsonProcessingException {
+        @JsonView(DefaultView.class)
+        @JsonWrapped(value = "wrapped", properties = {"y"}, views = View.class)
+        class FieldClass {
+            public int x = 42;
+            
+            public int y = 4711;
+        }
+        
+        String result = mapper.writerWithView(DefaultView.class)
+                              .writeValueAsString(new FieldClass());
+        
+        assertEquals("{\"x\":42}", result);
+    }
+    
+    @Test
+    void jsonWrapped_atTypeLevel_virtualProperty_isOmmitedWhenNotInView_evenIfPropertyIsInView() throws JsonProcessingException {
+        @JsonView(DefaultView.class)
+        @JsonWrapped(value = "wrapped", properties = {"y"}, views = View.class)
+        class FieldClass {
+            public int x = 42;
+            
+            @JsonView(DefaultView.class)
+            public int y = 4711;
+        }
+        
+        String result = mapper.writerWithView(DefaultView.class)
+                              .writeValueAsString(new FieldClass());
+        
+        assertEquals("{\"x\":42}", result);
+    }
+    
+    @Test
+    void jsonWrapped_atTypeLevel_virtualProperty_isNotOmmitedWhenInView() throws JsonProcessingException {
+        @JsonView(DefaultView.class)
+        @JsonWrapped(value = "wrapped", properties = {"y"}, views = View.class)
+        class FieldClass {
+            public int x = 42;
+            
+            public int y = 4711;
+        }
+        
+        String result = mapper.writerWithView(View.class)
+                              .writeValueAsString(new FieldClass());
+        
+        assertEquals("{\"x\":42,\"wrapped\":{\"y\":4711}}", result);
+    }
+    
+    @Test
+    void jsonWrapped_atTypeLevel_virtualProperty_isNotOmmitedWhenInView_multiple() throws JsonProcessingException {
+        @JsonView(DefaultView.class)
+        @JsonWrapped(value = "wrapped", properties = {"y"}, views = {View.class, DefaultView.class})
+        class FieldClass {
+            public int x = 42;
+            
+            public int y = 4711;
+        }
+        
+        {
+            String result = mapper.writerWithView(View.class)
+                                  .writeValueAsString(new FieldClass());
+            
+            assertEquals("{\"x\":42,\"wrapped\":{\"y\":4711}}", result);
+        }
+        {
+            String result = mapper.writerWithView(DefaultView.class)
+                                  .writeValueAsString(new FieldClass());
+            
+            assertEquals("{\"x\":42,\"wrapped\":{\"y\":4711}}", result);
+        }
+    }
+    
+    @Test
+    void jsonWrapped_atTypeLevel_virtualProperty_isNotOmmitedWhenInView_viewOfDifferentLevelAnnotations_withSameVirtualPropertyNameAreCombined() throws JsonProcessingException {
+        @JsonView(DefaultView.class)
+        @JsonWrapped(value = "wrapped", properties = {"y"}, views = View.class)
+        class FieldClass {
+            public int x = 42;
+            
+            public int y = 4711;
+            
+            @JsonWrapped(value = "wrapped", views = View2.class)
+            public int z = 10;
+            
+            @JsonWrapped("wrapped")
+            public int a = 1;
+        }
+        
+        {
+            String result = mapper.writerWithView(View2.class)
+                                  .writeValueAsString(new FieldClass());
+            
+            assertEquals("{\"x\":42,\"wrapped\":{\"y\":4711,\"z\":10,\"a\":1}}", result);
+        }
+        {
+            String result = mapper.writerWithView(View.class)
+                                  .writeValueAsString(new FieldClass());
+            
+            assertEquals("{\"x\":42,\"wrapped\":{\"y\":4711,\"z\":10,\"a\":1}}", result);
+        }
+    }
+    
+    @Test
+    void jsonWrapped_atTypeLevel_virtualProperty_isNotOmmitedWhenInView_viewOfDifferentLevelAnnotations_withSameVirtualPropertyNameAreCombined_butTypeLevelHasLowerPriority() throws JsonProcessingException {
+        @JsonView(DefaultView.class)
+        @JsonWrapped(value = "wrapped", properties = {"y"}, views = View.class)
+        class FieldClass {
+            public int x = 42;
+            
+            @JsonWrapped(value = "wrapped", views = View2.class)
+            public int y = 4711;
+            
+            @JsonWrapped(value = "wrapped", views = View2.class)
+            public int z = 10;
+            
+            @JsonWrapped("wrapped")
+            public int a = 1;
+        }
+        
+        {
+            String result = mapper.writerWithView(View2.class)
+                                  .writeValueAsString(new FieldClass());
+            
+            assertEquals("{\"x\":42,\"wrapped\":{\"y\":4711,\"z\":10,\"a\":1}}", result);
+        }
+        {
+            String result = mapper.writerWithView(View.class)
+                                  .writeValueAsString(new FieldClass());
+            
+            assertEquals("{\"x\":42}", result);
+        }
+    }
+    
+    @Test
+    void jsonWrapped_atTypeLevel_virtualProperty_isNotOmmitedWhenInView_viewOfDifferentAnnotationsWithDifferentPropertyNamesAreNotCombined() throws JsonProcessingException {
+        @JsonView(DefaultView.class)
+        @JsonWrapped(value = "wrapped", properties = {"y"}, views = View.class)
+        class FieldClass {
+            public int x = 42;
+            
+            public int y = 4711;
+            
+            @JsonWrapped(value = "foo", views = View2.class)
+            public int z = 4711;
+        }
+        
+        {
+            String result = mapper.writerWithView(View2.class)
+                                  .writeValueAsString(new FieldClass());
+            
+            assertEquals("{\"x\":42,\"foo\":{\"z\":4711}}", result);
+        }
+        {
+            String result = mapper.writerWithView(View.class)
+                                  .writeValueAsString(new FieldClass());
+            
+            assertEquals("{\"x\":42,\"wrapped\":{\"y\":4711}}", result);
+        }
+    }
+    
+    @Test
+    void jsonWrapped_atTypeLevel_virtualProperty_views_doNotInfluenceViewsOfProperties() throws JsonProcessingException {
+        @JsonView(DefaultView.class)
+        @JsonWrapped(value = "wrapped", properties = {"z"}, views = DefaultView.class)
+        class FieldClass {
+            public int x = 42;
+            
+            @JsonWrapped(value = "wrapped", views = DefaultView.class)
+            public int y = 4711;
+            
+            @JsonView(View.class)
+            public int z = 4711;
+        }
+        
+        String result = mapper.writerWithView(DefaultView.class)
+                              .writeValueAsString(new FieldClass());
+        
+        assertEquals("{\"x\":42,\"wrapped\":{\"y\":4711}}", result);
+    }
+    
+    @Test
+    void jsonWrapped_atTypeLevel_virtualProperty_isConsideredByFilter() throws JsonProcessingException {
         @JsonFilter("filter")
         @JsonWrapped(value = "wrapped", properties = "y")
         class FieldClass {
@@ -599,7 +931,7 @@ public class JsonWrappedTest {
     }
     
     @Test
-    public void jsonWrapped_atTypeLevel_warps_propertiesIncludedByClassFilter() throws JsonProcessingException {
+    void jsonWrapped_atTypeLevel_warps_propertiesIncludedByClassFilter() throws JsonProcessingException {
         @JsonFilter("filter")
         @JsonWrapped(value = "wrapped", properties = "y")
         class FieldClass {
@@ -614,7 +946,7 @@ public class JsonWrappedTest {
     }
     
     @Test
-    public void jsonWrapped_atTypeLevel_ommits_propertiesExcludedByClassFilter() throws JsonProcessingException {
+    void jsonWrapped_atTypeLevel_ommits_propertiesExcludedByClassFilter() throws JsonProcessingException {
         @JsonFilter("filter")
         @JsonWrapped(value = "wrapped", properties = {"y", "z"})
         class FieldClass {
@@ -630,7 +962,7 @@ public class JsonWrappedTest {
     }
     
     @Test
-    public void jsonWrapped_atTypeLevel_wraps_nestedBean() throws JsonProcessingException {
+    void jsonWrapped_atTypeLevel_wraps_nestedBean() throws JsonProcessingException {
         class NestedFieldClass {
             public int y = 4711;
         };
@@ -646,7 +978,7 @@ public class JsonWrappedTest {
     }
     
     @Test
-    public void jsonWrapped_atTypeLevel_wraps_propertiesOfNestedBean() throws JsonProcessingException {
+    void jsonWrapped_atTypeLevel_wraps_propertiesOfNestedBean() throws JsonProcessingException {
         @JsonWrapped(value = "wrapped", properties = "y")
         class NestedFieldClass {
             public int x = 42;

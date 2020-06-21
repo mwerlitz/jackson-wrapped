@@ -1,6 +1,7 @@
 package de.mw.jackson.wrapped;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import com.fasterxml.jackson.annotation.JsonView;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -29,5 +30,10 @@ public @interface JsonWrapped {
      * When specified on type level, the names of the wrapped properties
      */
     String[] properties() default {};
+    
+    /**
+     * Views the virtual property should be included in, works like a {@link JsonView} on that virtual property
+     */
+    Class<?>[] views() default {};
     
 }
