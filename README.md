@@ -52,7 +52,7 @@ Simply register the annotation with a module:
 ## Features
 
  - `@JsonWrapped` annotations can be placed at property (field or method) level and type (class) level 
- - `@JsonWrapped` annotations at property and type (class) level can be combined, configuration on properties has precedence
+ - `@JsonWrapped` annotations at property and type level with the same virtual property name can be combined, configuration on property level has precedence
  - multiple `@JsonWrapped` annotations with different names for the virtual property can be used, resulting in multiple virtual objects:
 
         @JsonWrapped(value="name", properties={"first","last})
@@ -78,7 +78,7 @@ Simply register the annotation with a module:
         }
 - respects the standard annotations like `@JsonProperty`, `@JsonIgnore`, ...
 - respects views via `@JsonView` on properties
-- supports views on the created virtual property via `@JsonWrapped(value="myVirtualProp",views={View.class})`, views of multiple annotations with the same name are combined, configuration on properties has precedence
+- supports views on the created virtual property via `@JsonWrapped(value="myVirtualProp",views={View.class})`, views of multiple annotations with the same name for the virtual property are combined, configuration on property level has precedence
 - supports filtering of properties by `@JsonFilter` and the created virtual properties
 - supports wrapping of properties produced by `@AnyGetter` 
 

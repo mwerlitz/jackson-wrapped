@@ -32,13 +32,13 @@ import java.util.Set;
  * 
  * This works by analyzing the properties ({@link BeanPropertyWriter}) of the existing {@link BeanSerializer}.
  * If a property that should be wrapped is detected it will be grouped with others into a virtual property {@link WrappingPropertyWriter}
- * which is in fact a wrapper for a new {@link BeanSerializer} of a "virtual bean" (matching the original type). 
+ * which is in fact a wrapper for a new {@link BeanSerializer} of a "virtual bean" (matching the original type).
  * The existing properties ({@link BeanPropertyWriter}) will be moved to the "virtual bean".
  *
  * As a result a copy of the original {@link BeanSerializer} will created containing only the non-wrapped properties
- * and the virtual properties (BeanSerializer is immutable). 
+ * and the new virtual properties (BeanSerializer is immutable).
  * 
- * Unfortunately it is not possible to access all data about the original {@link BeanSerializer} from outside.
+ * Unfortunately it is not possible to access all required data about the original {@link BeanSerializer} from outside.
  * Thus this class is a subclass of it. Do not use the builder instance for serialization.
  */
 class WrappingBeanSerializerBuilder extends BeanSerializer {
