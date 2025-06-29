@@ -78,7 +78,14 @@ class WrappingBeanSerializerBuilder extends BeanSerializer {
     }
     
     BeanSerializer withWrappedProperties(MapperConfig<?> config, BeanDescription beanDesc) {
-        PropInfo remainingProps = wrapProperties(_props, (_filteredProps == null ? new BeanPropertyWriter[0] : _filteredProps), _anyGetterWriter, config, beanDesc);
+        AnyGetterWriter anyGetterWriter = null;
+        for (BeanPropertyWriter writer : _props) {
+            if (writer instanceof AnyGetterWriter) {
+                anyGetterWriter = (AnyGetterWriter) writer;
+            }
+        }
+
+        PropInfo remainingProps = wrapProperties(_props, (_filteredProps == null ? new BeanPropertyWriter[0] : _filteredProps), anyGetterWriter, config, beanDesc);
         return createBeanSerializer(remainingProps, beanDesc);
     }
     
@@ -227,7 +234,7 @@ class WrappingBeanSerializerBuilder extends BeanSerializer {
     }
     
     private BeanPropertyWriter constructVirtualProperty(String name, PropInfo wrappedProps, MapperConfig<?> config, BeanDescription beanDesc) {
-        // code party from com.fasterxml.jackson.databind.introspect.JacksonAnnotationIntrospector._constructVirtualProperty(Prop, MapperConfig<?>, AnnotatedClass)
+        // code partly from com.fasterxml.jackson.databind.introspect.JacksonAnnotationIntrospector._constructVirtualProperty(Prop, MapperConfig<?>, AnnotatedClass)
         AnnotatedClass ac = beanDesc.getClassInfo();
         PropertyMetadata metadata = PropertyMetadata.STD_OPTIONAL;
         PropertyName propName = new PropertyName(name);
